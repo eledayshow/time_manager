@@ -1,6 +1,3 @@
-work_duration = 10  # с
-rest_duration = 10  # с
-
 screenshot_path = 'screenshot.png'
 
 bg_color = (50, 50, 50)  # background

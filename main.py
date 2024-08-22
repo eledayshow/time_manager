@@ -1,3 +1,5 @@
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 import pygame
 from pygame.font import Font
 from pygame.color import Color
@@ -5,11 +7,40 @@ import pyautogui
 import time
 import conf
 import keyboard
+import json
 
 pygame.init()
 SCREEN_INFO = pygame.display.Info()
 SCREEN_W, SCREEN_H = SCREEN_INFO.current_w, SCREEN_INFO.current_h
 vh, vw = SCREEN_H / 100, SCREEN_W / 100
+
+
+def set_user_settings():
+    if os.path.exists('user_settings.json'):
+        return
+    
+    print('\n\nПривет! Это программа для управление временем - она напомнит сделать перерыв, чтобы ты не терял фокус. Давай выберем подходящие настройки. Скоро эта нстройка должна получить графический интерфейс :)')
+    work_duration = None
+    while work_duration is None:
+        work_duration = input('Введи длительность периода работы в минутах (рекомендуемое значение - 25): ')
+        if work_duration.isdigit():
+            work_duration = int(work_duration)
+        else:
+            work_duration = None
+
+    rest_duration = None
+    while rest_duration is None:
+        rest_duration = input('Введи длительность перерыва в минутах (рекомендуемое значение - 5): ')
+        if rest_duration.isdigit():
+            rest_duration = int(rest_duration)
+        else:
+            rest_duration = None
+
+    with open('user_settings.json', 'w') as file:
+        json.dump({
+            'work_duration': work_duration,
+            'rest_duration': rest_duration
+        }, file)
 
 
 def wrap_text(text, font, max_width):
@@ -128,6 +159,14 @@ def rest(duration):
 
 if __name__ == '__main__':
 
+    
+    set_user_settings()
+
+    with open('user_settings.json', 'r') as file:
+        r = json.load(file)
+        work_duration = r.get('work_duration')
+        rest_duration = r.get('rest_duration')
+
     start_time = time.time()
     last_esc = None
 
@@ -138,8 +177,8 @@ if __name__ == '__main__':
             if last_esc is not None and time.time() - last_esc >= 5:
                 last_esc = None
 
-            if time.time() - start_time >= conf.work_duration:
-                rest(conf.rest_duration)
+            if time.time() - start_time >= work_duration:
+                rest(rest_duration)
                 start_time = time.time()
             elif keyboard.is_pressed('ctrl+esc'):
                 rest(None)
@@ -149,7 +188,7 @@ if __name__ == '__main__':
             exit()
 
         except ImportError:
-            print('ImportError. Check roots')
+            print('ImportError. Проверьте root права')
             exit()
 
         except Exception as error:
