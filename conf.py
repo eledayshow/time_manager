@@ -1,5 +1,5 @@
-work_duration = 25 * 60  # с
-rest_duration = 5 * 60  # с
+work_duration = 10  # с
+rest_duration = 10  # с
 
 screenshot_path = 'screenshot.png'
 

@@ -4,8 +4,7 @@ from pygame.color import Color
 import pyautogui
 import time
 import conf
-import random
-
+import keyboard
 
 pygame.init()
 SCREEN_INFO = pygame.display.Info()
@@ -39,7 +38,7 @@ def time_to_str(s):
     return f'{m}:{s}'
 
 
-def rest():
+def rest(duration):
     start_time = time.time()
 
     pyautogui.screenshot().save(conf.screenshot_path)
@@ -53,22 +52,25 @@ def rest():
 
     title = 'Перерыв'
 
+    f_t = Font(conf.title_font_path, 62)
+    f_st = Font(conf.subtitle_font_path, 20)
+
     running = True
     while running:
         
-        subtitle = time_to_str(conf.rest_duration - (time.time() - start_time))
-
-        if time.time() - start_time >= conf.rest_duration:
-            return
+        if duration is not None and time.time() - start_time < duration:
+            subtitle = time_to_str(duration - (time.time() - start_time))
+        elif duration is not None and time.time() - start_time >= duration:
+            running = False
+            break
+        else:
+            subtitle = time_to_str(time.time() - start_time) + ' (esc для выхода)'
         
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT or (event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE):
-                running = False
+        if keyboard.is_pressed('esc'):
+            running = False
+            break
 
         image.set_alpha(image_alpha)
-
-        f_t = Font(conf.title_font_path, 62)
-        f_st = Font(conf.subtitle_font_path, 20)
 
         wrapped_title = wrap_text(title, f_t, conf.max_width_title * vw)
         wrapped_subtitle = wrap_text(subtitle, f_st, conf.max_width_subtitle * vw)
@@ -81,11 +83,6 @@ def rest():
 
         title_rects = []
         subtitle_rects = []
-
-        pygame.draw.rect(
-            screen, Color(conf.bg_pg_color), 
-            pygame.Rect(0, 0, SCREEN_W * ((time.time() - start_time) / conf.rest_duration), SCREEN_H)
-        )
 
         for line in wrapped_title:
             title_surface = f_t.render(line, True, Color(*conf.title_color))
@@ -126,7 +123,34 @@ def rest():
         pygame.display.flip()
         time.sleep(.001)
 
-    pygame.quit()
+    pygame.display.quit()
 
 
-rest()
+if __name__ == '__main__':
+
+    start_time = time.time()
+    last_esc = None
+
+    while True:
+    
+        try:
+
+            if last_esc is not None and time.time() - last_esc >= 5:
+                last_esc = None
+
+            if time.time() - start_time >= conf.work_duration:
+                rest(conf.rest_duration)
+                start_time = time.time()
+            elif keyboard.is_pressed('ctrl+esc'):
+                rest(None)
+                start_time = time.time()
+
+        except KeyboardInterrupt:
+            exit()
+
+        except ImportError:
+            print('ImportError. Check roots')
+            exit()
+
+        except Exception as error:
+            print(error)
