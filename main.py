@@ -38,8 +38,8 @@ def set_user_settings():
 
     with open('user_settings.json', 'w') as file:
         json.dump({
-            'work_duration': work_duration,
-            'rest_duration': rest_duration
+            'work_duration': work_duration * 60,
+            'rest_duration': rest_duration * 60
         }, file)
 
 
