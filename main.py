@@ -8,6 +8,8 @@ import time
 import conf
 import keyboard
 import json
+import datetime as dt
+import traceback
 
 pygame.init()
 SCREEN_INFO = pygame.display.Info()
@@ -15,11 +17,68 @@ SCREEN_W, SCREEN_H = SCREEN_INFO.current_w, SCREEN_INFO.current_h
 vh, vw = SCREEN_H / 100, SCREEN_W / 100
 
 
+class Statictics:
+
+    def __init__(self):
+        self.filename = 'statistics.json'
+
+        self.WORK = 'work'
+        self.REST = 'rest'
+        self.USER_REST = 'user_rest'
+
+        if not os.path.exists(self.filename):
+            with open(self.filename, 'w') as file:
+                json.dump({'actions': []}, file)
+
+    def add_action(
+            self,
+            type: str,
+            start_time: dt.datetime,
+            finish_time: dt.datetime,
+            task: str = None
+    ):
+        obj = {
+            'type': type,
+            'start_time': start_time.strftime('%d.%m.%Y %X'),
+            'finish_time': finish_time.strftime('%d.%m.%Y %X'),
+            'task': task
+        }
+
+        with open(self.filename, 'r') as file:
+            data = json.load(file)
+        
+        data['actions'].append(obj)
+
+        with open(self.filename, 'w') as file:
+            json.dump(data, file)
+
+    def end_work(self, duration):
+        self.add_action(
+            self.WORK,
+            dt.datetime.now() - dt.timedelta(seconds=duration),
+            dt.datetime.now()
+        )
+
+    def end_rest(self, duration):
+        self.add_action(
+            self.REST,
+            dt.datetime.now() - dt.timedelta(seconds=duration),
+            dt.datetime.now()
+        )
+
+    def end_user_rest(self, duration):
+        self.add_action(
+            self.USER_REST,
+            dt.datetime.now() - dt.timedelta(seconds=duration),
+            dt.datetime.now()
+        )
+
+
 def set_user_settings():
     if os.path.exists('user_settings.json'):
         return
     
-    print('\n\nПривет! Это программа для управление временем - она напомнит сделать перерыв, чтобы ты не терял фокус. Давай выберем подходящие настройки. Скоро эта нстройка должна получить графический интерфейс :)')
+    print('\n\nПривет! Это программа для управление временем - она напомнит сделать перерыв, чтобы ты не терял фокус. Давай выберем подходящие настройки. Скоро эта настройка должна получить графический интерфейс :)')
     work_duration = None
     while work_duration is None:
         work_duration = input('Введи длительность периода работы в минутах (рекомендуемое значение - 25): ')
@@ -81,10 +140,10 @@ def rest(duration):
     image_alpha = 255
     text_alpha = 0
 
-    title = 'Перерыв'
-
     f_t = Font(conf.title_font_path, 62)
     f_st = Font(conf.subtitle_font_path, 20)
+
+    title = 'Перерыв'
 
     running = True
     while running:
@@ -92,12 +151,17 @@ def rest(duration):
         if duration is not None and time.time() - start_time < duration:
             subtitle = time_to_str(duration - (time.time() - start_time))
         elif duration is not None and time.time() - start_time >= duration:
-            running = False
-            break
+            title = 'Перерыв завершен'
+            subtitle = '00:00 (нажми любую кнопку, чтобы начать работу)'
         else:
             subtitle = time_to_str(time.time() - start_time) + ' (esc для выхода)'
         
         if keyboard.is_pressed('esc'):
+            if duration is None:
+                statictics.end_user_rest(time.time() - start_time)
+            else:
+                statictics.end_rest(time.time() - start_time)
+
             running = False
             break
 
@@ -152,6 +216,18 @@ def rest(duration):
                 screen.blit(surface, rect)
 
         pygame.display.flip()
+
+        if duration is not None and time.time() - start_time >= duration:
+            keyboard.read_key()
+
+            if duration is None:
+                statictics.end_user_rest(time.time() - start_time)
+            else:
+                statictics.end_rest(time.time() - start_time)
+
+            running = False
+            break
+
         time.sleep(.001)
 
     pygame.display.quit()
@@ -159,7 +235,7 @@ def rest(duration):
 
 if __name__ == '__main__':
 
-    
+    statictics = Statictics()
     set_user_settings()
 
     with open('user_settings.json', 'r') as file:
@@ -168,19 +244,19 @@ if __name__ == '__main__':
         rest_duration = r.get('rest_duration')
 
     start_time = time.time()
-    last_esc = None
 
     while True:
     
         try:
 
-            if last_esc is not None and time.time() - last_esc >= 5:
-                last_esc = None
-
             if time.time() - start_time >= work_duration:
+                statictics.end_work(time.time() - start_time)
+
                 rest(rest_duration)
                 start_time = time.time()
             elif keyboard.is_pressed('ctrl+esc'):
+                statictics.end_work(time.time() - start_time)
+
                 rest(None)
                 start_time = time.time()
 
@@ -192,4 +268,6 @@ if __name__ == '__main__':
             exit()
 
         except Exception as error:
-            print(error)
+            traceback.print_exception()
+
+        time.sleep(.01)
