@@ -140,8 +140,8 @@ def rest(duration):
     image_alpha = 255
     text_alpha = 0
 
-    f_t = Font(conf.title_font_path, 62)
-    f_st = Font(conf.subtitle_font_path, 20)
+    f_t = Font(conf.title_font_path, conf.title_font_size)
+    f_st = Font(conf.subtitle_font_path, conf.subtitle_font_size)
 
     title = 'Перерыв'
 
