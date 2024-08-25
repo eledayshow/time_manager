@@ -75,31 +75,41 @@ class Statictics:
 
 
 def set_user_settings():
-    if os.path.exists('user_settings.json'):
-        return
-    
-    print('\n\nПривет! Это программа для управление временем - она напомнит сделать перерыв, чтобы ты не терял фокус. Давай выберем подходящие настройки. Скоро эта настройка должна получить графический интерфейс :)')
-    work_duration = None
-    while work_duration is None:
-        work_duration = input('Введи длительность периода работы в минутах (рекомендуемое значение - 25): ')
-        if work_duration.isdigit():
-            work_duration = int(work_duration)
-        else:
-            work_duration = None
+    if not os.path.exists('user_settings.json'):
+        d = {}
+    else:
+        with open('user_settings.json', 'r') as file:
+            d = json.load(file)
 
-    rest_duration = None
-    while rest_duration is None:
-        rest_duration = input('Введи длительность перерыва в минутах (рекомендуемое значение - 5): ')
-        if rest_duration.isdigit():
-            rest_duration = int(rest_duration)
-        else:
-            rest_duration = None
+    if 'work_duration' not in d:
+        print('Привет! Это программа для управление временем - она напомнит сделать перерыв, чтобы ты не терял фокус. Давай выберем подходящие настройки. Скоро эта настройка должна получить графический интерфейс :)')
+        work_duration = None
+        while work_duration is None:
+            work_duration = input('Введи длительность периода работы в минутах (рекомендуемое значение - 25): ')
+            if work_duration.isdigit():
+                work_duration = int(work_duration)
+            else:
+                work_duration = None
+        d['work_duration'] = work_duration * 60
+
+    if 'rest_duration' not in d:
+        rest_duration = None
+        while rest_duration is None:
+            rest_duration = input('Введи длительность перерыва в минутах (рекомендуемое значение - 5): ')
+            if rest_duration.isdigit():
+                rest_duration = int(rest_duration)
+            else:
+                rest_duration = None
+        d['rest_duration'] = rest_duration * 60
+
+    if 'title_font_size' not in d:
+        d['title_font_size'] = int(round(9 * vh))
+
+    if 'subtitle_font_size' not in d:
+        d['subtitle_font_size'] = int(round(3 * vh))
 
     with open('user_settings.json', 'w') as file:
-        json.dump({
-            'work_duration': work_duration * 60,
-            'rest_duration': rest_duration * 60
-        }, file)
+        json.dump(d, file)
 
 
 def wrap_text(text, font, max_width):
@@ -129,6 +139,12 @@ def time_to_str(s):
 
 
 def rest(duration):
+
+    with open('user_settings.json', 'r') as file:
+        r = json.load(file)
+        title_font_size = r.get('title_font_size')
+        subtitle_font_size = r.get('subtitle_font_size')
+
     start_time = time.time()
 
     pyautogui.screenshot().save(conf.screenshot_path)
@@ -140,8 +156,8 @@ def rest(duration):
     image_alpha = 255
     text_alpha = 0
 
-    f_t = Font(conf.title_font_path, conf.title_font_size)
-    f_st = Font(conf.subtitle_font_path, conf.subtitle_font_size)
+    f_t = Font(conf.title_font_path, title_font_size)
+    f_st = Font(conf.subtitle_font_path, subtitle_font_size)
 
     title = 'Перерыв'
 
@@ -158,9 +174,9 @@ def rest(duration):
         
         if keyboard.is_pressed('esc'):
             if duration is None:
-                statictics.end_user_rest(time.time() - start_time)
+                statistics.end_user_rest(time.time() - start_time)
             else:
-                statictics.end_rest(time.time() - start_time)
+                statistics.end_rest(time.time() - start_time)
 
             running = False
             break
@@ -221,9 +237,9 @@ def rest(duration):
             keyboard.read_key()
 
             if duration is None:
-                statictics.end_user_rest(time.time() - start_time)
+                statistics.end_user_rest(time.time() - start_time)
             else:
-                statictics.end_rest(time.time() - start_time)
+                statistics.end_rest(time.time() - start_time)
 
             running = False
             break
@@ -235,7 +251,7 @@ def rest(duration):
 
 if __name__ == '__main__':
 
-    statictics = Statictics()
+    statistics = Statictics()
     set_user_settings()
 
     with open('user_settings.json', 'r') as file:
@@ -250,12 +266,12 @@ if __name__ == '__main__':
         try:
 
             if time.time() - start_time >= work_duration:
-                statictics.end_work(time.time() - start_time)
+                statistics.end_work(time.time() - start_time)
 
                 rest(rest_duration)
                 start_time = time.time()
             elif keyboard.is_pressed('ctrl+esc'):
-                statictics.end_work(time.time() - start_time)
+                statistics.end_work(time.time() - start_time)
 
                 rest(None)
                 start_time = time.time()
@@ -267,7 +283,7 @@ if __name__ == '__main__':
             print('ImportError. Проверьте root права')
             exit()
 
-        except Exception as error:
-            traceback.print_exception()
+        except:
+            traceback.print_exc()
 
         time.sleep(.01)
